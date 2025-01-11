@@ -13,4 +13,4 @@ Welcome to Flash v1.0! This project is designed to provide a fast and efficient 
 
 For any questions or feedback, please contact sahu69270@gmail.com.
 
-Thank you for using Flash v6.0!
+Thank you for using Flash v1.0!
