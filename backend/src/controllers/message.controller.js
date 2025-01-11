@@ -24,6 +24,9 @@ export const getMessages = async (req, res) => {
     const {publickey}=req.headers;
     const {privateKey}=retrievePrivateKey(req.user.email.split('@')[0]);
 
+    console.log("Public Key:", publickey);
+    console.log("Private Key:", privateKey);
+
     const query = {
       $or: [
         { senderId: myId, receiverId: userToChatId },
