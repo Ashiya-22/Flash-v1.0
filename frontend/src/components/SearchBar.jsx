@@ -102,7 +102,7 @@ const SearchBar = ({ searchBarRef }) => {
                 </div>
               </>
               ):(
-                searchLoading || query.length>0 && <SearchBarSkeletton />
+                (searchLoading || query.length>0) && <SearchBarSkeletton />
               ))     
           }
         </div>}
