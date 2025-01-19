@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
-import { storeKeyValue } from "../keys/key.js";
+import { storeKeyValue,deleteIndexedDB } from "../keys/key.js";
 import { generateECDHKeys } from "../keys/generateKeys.js";
 
 const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5001" : "/";
@@ -23,6 +23,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       await axiosInstance.delete("/auth/delete-profile");
       set({ authUser: null });
+      deleteIndexedDB();
       get().disconnectSocket();
       toast.success("Account deleted successfully !");
     } catch (error) {

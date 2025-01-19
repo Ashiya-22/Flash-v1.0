@@ -40,7 +40,7 @@ export const signup = async (req,res)=>{
                 fullName: newUser.fullName,
                 email: newUser.email,
                 profilePic: newUser.profilePic,
-                hasDownloadedKey,
+                hasDownloadedKey: newUser.hasDownloadedKey,
             });
         }else{
             res.status(400).json({ message: "Invalid user data" });
@@ -116,20 +116,30 @@ export const updateProfile = async (req,res)=>{
     }
 };
 
-export const deleteProfile = async (req,res)=>{
+export const deleteProfile = async (req, res) => {
     try {
         const userId = req.user._id;
+        // Clear the JWT cookie
         res.cookie("jwt", "", { maxAge: 0 });
+        // Delete the user's document
         const userDeletion = await User.findByIdAndDelete(userId);
         if (!userDeletion) {
             return res.status(404).json({ message: "User not found" });
         }
+        // Remove user ID from all friends arrays
+        await User.updateMany(
+            { friends: userId },
+            { $pull: { friends: userId } }
+        );
+        // Delete all messages where the user is the sender or receiver
         await Message.deleteMany({
             $or: [{ senderId: userId }, { receiverId: userId }],
         });
-        res.status(200).json({ message: "Account and related messages deleted successfully" });
+        res.status(200).json({
+            message: "Account, related messages, and friend references deleted successfully",
+        });
     } catch (error) {
-        console.log("Error in deleteAccount controller:", error);
+        console.error("Error in deleteProfile controller:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };

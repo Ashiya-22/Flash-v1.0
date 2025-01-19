@@ -72,5 +72,23 @@ function getValueByKey(key) {
     });
 }
 
+function deleteIndexedDB(databaseName = 'KeyValueDB') {
+    const request = indexedDB.deleteDatabase(databaseName);
+
+    request.onsuccess = () => {
+        console.log(`Database "${databaseName}" deleted successfully.`);
+    };
+
+    request.onerror = (event) => {
+        console.error(`Error deleting database "${databaseName}":`, event.target.error);
+    };
+
+    request.onblocked = () => {
+        console.warn(
+            `Database "${databaseName}" deletion blocked. Please close all open connections to the database.`
+        );
+    };
+}
+
 // Export functions
-export { storeKeyValue, getValueByKey };
+export { storeKeyValue, getValueByKey,deleteIndexedDB };
