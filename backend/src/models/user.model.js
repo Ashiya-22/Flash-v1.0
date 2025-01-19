@@ -23,6 +23,14 @@ const userSchema=new mongoose.Schema(
         publicKey:{
             type: String,
         },
+        hasDownloadedKey:{
+            type: Boolean,
+            default: false,
+        },
+        friends:{
+            type: [String],
+            default: [],
+        },
     },
     {
         timestamps: true

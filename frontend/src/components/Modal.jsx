@@ -21,9 +21,9 @@ const Modal = () => {
   return (
     <>
     {isOpen &&
-    <div className='h-full w-full bg-[#00000083] fixed top-0 left-0'>
+    <div className='h-full w-full bg-[#00000083] fixed top-0 left-0 animate-fadeIn z-50'>
     <div className='h-full w-full flex justify-center items-center'>
-        <div className="z-100 flex items-center justify-center">
+        <div className="flex items-center justify-center">
           <div className="bg-neutral rounded-lg shadow-lg max-w-96 p-8 mx-6">
             <div className="flex gap-2 justify-start items-center">
               <TriangleAlert className='w-6 h-6 text-yellow-400 animate-pulse'/><span className="text-lg font-semibold text-white">Confirm {modalFlag?("Logout"):("Deletion")}</span>

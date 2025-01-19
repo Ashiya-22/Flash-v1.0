@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Eye, EyeOff, Loader2, Lock, Mail, UserPlus, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import PasswordStrengthMeter from "../components/PasswordStrengthMeter";
 
 import AuthImagePattern from "../components/AuthImagePattern";
 import toast from "react-hot-toast";
@@ -131,7 +132,7 @@ const SignUpPage = () => {
           <div className="text-center">
             <p className="text-base-content/60">
               Already have an account?{" "}
-              <Link to="/login" className="link link-primary">
+              <Link to="/login" className="link link-primary no-underline">
                 Sign in
               </Link>
             </p>
@@ -141,10 +142,15 @@ const SignUpPage = () => {
 
       {/* right side */}
 
-      <AuthImagePattern
+      {formData.password.length>0?(
+        <div className="hidden lg:flex items-center justify-center bg-base-200">
+          <PasswordStrengthMeter password={formData.password}/>
+        </div>
+        ):(
+        <AuthImagePattern
         title="Join our community !"
         subtitle="Connect with friends, share moments, and stay in touch with your loved ones."
-      />
+      />)}
     </div>
   );
 };

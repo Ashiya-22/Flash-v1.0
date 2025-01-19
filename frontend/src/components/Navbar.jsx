@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, Snail, Settings, User } from "lucide-react";
+import { LogOut, Snail, Settings, User,UserRoundSearch } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 
 const Navbar = () => {
   const { authUser } = useAuthStore();
-  const {toggleModal} = useChatStore();
+  const {toggleModal,toggleSearchBar} = useChatStore();
   return (
     <header
       className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 
@@ -22,7 +22,12 @@ const Navbar = () => {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            {authUser && <button className="btn btn-sm gap-2 transition-colors" onClick={toggleSearchBar}>
+                  <UserRoundSearch className="size-[1.1rem]" />
+                  <span className="hidden sm:inline font-medium">Search</span>
+            </button>}
+
             <Link
               to={"/settings"}
               className={`
@@ -41,9 +46,9 @@ const Navbar = () => {
                   <span className="hidden sm:inline">Profile</span>
                 </Link>
 
-                <button className="flex gap-2 items-center" onClick={toggleModal}>
+                <button className="flex gap-1 items-center" onClick={toggleModal}>
                   <LogOut className="size-5" />
-                  <span className="hidden sm:inline font-medium">Logout</span>
+                  <span className="hidden sm:inline font-medium text-sm">Logout</span>
                 </button>
               </>
             )}

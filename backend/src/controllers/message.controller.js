@@ -2,12 +2,11 @@ import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId,io } from "../lib/socket.js";
-import { encryptMessage,retrievePrivateKey,decryptMessage } from "../lib/utils.js";
 
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+    const friendsArray = req.user.friends;
+    const filteredUsers = await User.find({ _id: { $in: friendsArray } }).select("profilePic publicKey fullName _id");
 
     res.status(200).json(filteredUsers);
   } catch (error) {
@@ -16,16 +15,73 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
+export const searchUsers = async (req, res) => {
+  const { q } = req.query;
+
+  // Check if query parameter is provided and not empty
+  if (!q || q.trim() === "") {
+    return res.status(400).json({ message: "Query parameter 'q' is required" });
+  }
+
+  try {
+    const friendsArray = req.user.friends;
+
+    const suggestions = await User.find(
+      {
+        fullName: { $regex: `^${q.trim()}`, $options: "i" }, // Match names starting with `q`, case-insensitive
+        _id: { $nin: friendsArray }, // Exclude friends' IDs
+      },
+      "profilePic publicKey fullName _id"
+    ).limit(5); 
+
+    res.status(200).json(suggestions);
+  } catch (error) {
+    console.error("Error in searchUsers controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+export const addFriend = async (req, res) => {
+  const { friendId } = req.body; // ID of the user to be added as a friend
+  const loggedInUserId = req.user._id; // ID of the logged-in user
+
+
+  if (!friendId) {
+    return res.status(400).json({ message: "Friend ID is required" });
+  }
+
+  try {
+    // Update the logged-in user's friends array
+    const loggedInUserUpdate = User.findByIdAndUpdate(
+      loggedInUserId,
+      { $addToSet: { friends: friendId } },
+      { new: true } 
+    );
+
+    // Update the friend's friends array
+    const friendUserUpdate = User.findByIdAndUpdate(
+      friendId,
+      { $addToSet: { friends: loggedInUserId } },
+      { new: true }
+    );
+
+    // Execute both updates concurrently
+    await Promise.all([loggedInUserUpdate, friendUserUpdate]);
+
+    res.status(200).json({message: "Friend added successfully"});
+  } catch (error) {
+    console.error("Error in addFriend controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
 export const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params; // Chat partner ID
     const myId = req.user._id; // Current user ID
     const { lastMessageTimestamp, limit = 10 } = req.query; // Cursor and limit from query params
-    const {publickey}=req.headers;
-    const {privateKey}=retrievePrivateKey(req.user.email.split('@')[0]);
-
-    console.log("Public Key:", publickey);
-    console.log("Private Key:", privateKey);
 
     const query = {
       $or: [
@@ -44,13 +100,11 @@ export const getMessages = async (req, res) => {
       .sort({ createdAt: -1 }) // Latest messages first
       .limit(parseInt(limit));
 
-    let decryptedMessage=decryptMessage(payLoad,privateKey,publickey);
-
     // Check if there are more messages
-    const hasMore = decryptedMessage.length === parseInt(limit);
+    const hasMore = payLoad.length === parseInt(limit);
 
     res.status(200).json({
-      messages: decryptedMessage.reverse(), // Reverse to show older messages at the top
+      messages: payLoad.reverse(), // Reverse to show older messages at the top
       hasMore,
     });
   } catch (error) {
@@ -63,37 +117,27 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
     try {
-      const { text, image, publicKey } = req.body;
+      const { text, image } = req.body;
       const { id: receiverId } = req.params;
       const senderId = req.user._id;
-      const {privateKey}=retrievePrivateKey(req.user.email.split('@')[0]);
 
       let imageUrl;
-      let payLoad;
       let newMessage;
       if (image) {
         // Upload base64 image to cloudinary
         const uploadResponse = await cloudinary.uploader.upload(image);
         imageUrl = uploadResponse.secure_url;
       }
-
-      let data=image?(imageUrl):(text);
-      payLoad = encryptMessage(data,privateKey,publicKey);
       
       newMessage = new Message({
         senderId,
         receiverId,
-        text:text?payLoad.encryptedMessage:null,
-        image:image?payLoad.encryptedMessage:null,
-        qC:null
+        text:text?text:null,
+        image:image?imageUrl:null,
+        qC:null,
       });
 
       await newMessage.save();
-
-      newMessage.text=text?text:null;
-      newMessage.image=image?image:null;
-      newMessage.iv=null;
-      newMessage.qC=true;
 
       const receiverSocketId = getReceiverSocketId(receiverId);
       

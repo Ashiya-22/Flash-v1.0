@@ -3,11 +3,9 @@ import Message from "../models/message.model.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../lib/utils.js";
 import cloudinary from "../lib/cloudinary.js";
-import crypto from "crypto";
-import { savePrivateKey } from "../lib/utils.js";
 
 export const signup = async (req,res)=>{
-    const {fullName,email,password}=req.body;
+    const {fullName,email,password,publicKey}=req.body;
 
     try {
         if (!fullName || !email || !password) {
@@ -25,21 +23,11 @@ export const signup = async (req,res)=>{
         const salt=await bcrypt.genSalt(10);
         const hashedPassword=await bcrypt.hash(password,salt);
 
-        //  Elliptic Curve Diffie-Hellman Algorithm
-        const ecdh = crypto.createECDH('secp256k1');
-        ecdh.generateKeys();
-
-        const privateKey = ecdh.getPrivateKey().toString('base64');
-        const publicKey = ecdh.getPublicKey().toString('base64');
-
-        const keyName=email.split('@')[0];
-        savePrivateKey(privateKey,keyName);
-
         const newUser = new User({
             fullName,
             email,
             password: hashedPassword,
-            publicKey,
+            publicKey: publicKey,
         });
 
         if(newUser){
@@ -52,6 +40,7 @@ export const signup = async (req,res)=>{
                 fullName: newUser.fullName,
                 email: newUser.email,
                 profilePic: newUser.profilePic,
+                hasDownloadedKey,
             });
         }else{
             res.status(400).json({ message: "Invalid user data" });
@@ -85,6 +74,7 @@ export const login = async (req,res)=>{
           fullName: user.fullName,
           email: user.email,
           profilePic: user.profilePic,
+          hasDownloadedKey: user.hasDownloadedKey,
         });
 
     } catch (error) {
@@ -139,8 +129,22 @@ export const deleteProfile = async (req,res)=>{
         });
         res.status(200).json({ message: "Account and related messages deleted successfully" });
     } catch (error) {
-        console.log("Error in deleteAccount:", error);
+        console.log("Error in deleteAccount controller:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const downloadFlag = async (req,res)=>{
+    try {
+        const userId = req.user._id;
+        const updatedUser = await User.findByIdAndUpdate(userId, { hasDownloadedKey: true }, { new: true });
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        res.status(200).json({ message: "Flag updated successfully" });
+    }catch(error){
+        console.log("Error in downloadFlag controller", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 };
 

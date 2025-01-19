@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
+import { storeKeyValue } from "../keys/key.js";
+import { generateECDHKeys } from "../keys/generateKeys.js";
 
 const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5001" : "/";
 
@@ -14,6 +16,7 @@ export const useAuthStore = create((set, get) => ({
   onlineUsers: [],
   socket: null,
   isDeleting:false,
+  isUpdatingFlag:false,
 
   deleteProfile: async () => {
     set({ isDeleting: true });
@@ -46,12 +49,19 @@ export const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await axiosInstance.post("/auth/signup", data);
+      const keys = await generateECDHKeys();
+      let updatedData={
+        ...data,
+        publicKey: keys.publicKey,
+      }
+      const keyName=data.email.split('@')[0];
+      const res = await axiosInstance.post("/auth/signup", updatedData);
       set({ authUser: res.data });
       toast.success("Account created successfully !");
       get().connectSocket();
+      await storeKeyValue(keyName, keys.privateKey);
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error);
     } finally {
       set({ isSigningUp: false });
     }
@@ -90,10 +100,22 @@ export const useAuthStore = create((set, get) => ({
       set({ authUser: res.data });
       toast.success("Profile updated successfully !");
     } catch (error) {
-      console.log("error in update profile:", error);
+      console.log("Error in update profile:", error);
       toast.error(error.response.data.message);
     } finally {
       set({ isUpdatingProfile: false });
+    }
+  },
+
+  updateFlag: async () => {
+    set({ isUpdatingFlag: true });
+    try {
+      await axiosInstance.put("/auth/update-download-flag");
+    } catch (error) {
+      console.log("Error in update flag:", error);
+      toast.error("Something went wrong !");
+    } finally {
+      set({ isUpdatingFlag: false });
     }
   },
 

@@ -66,8 +66,6 @@ const ChatContainer = () => {
     );
   }
 
-  console.log(groupedMessages);
-
   return (
     <div className="relative flex-1 flex flex-col overflow-auto">
       <ChatHeader />
@@ -144,16 +142,16 @@ const ChatContainer = () => {
                       : ""}`):("bg-red-500 text-white")}
                   } flex flex-col`}
                 >
-                  {message.image && message.qC && 
+                  {(message.image && message.qC) && 
                     <img
                       src={message.image}
                       alt="Attachment"
                       className="sm:max-w-[200px] rounded-md mb-2"
                     />
                   }
-                  {message.text && message.qC && <p className="text-white">{message.text}</p>}
+                  {(message.text && message.qC) && <p className="text-white">{message.text}</p>}
 
-                  {message.image || message.text && !message.qC && <p className="flex justify-center items-center gap-1 text-sm md:text-base"><MessageCircleWarning className="animate-pulse w-5 md:w-6"/>Breached Message</p>}
+                  {((message.image || message.text) && !message.qC) && <p className="flex justify-center items-center gap-1 text-sm md:text-base"><MessageCircleWarning className="animate-pulse w-5 md:w-6"/>Breached Message</p>}
                 </div>
               </div>
             ))}

@@ -4,13 +4,16 @@ import { Camera, Mail, User } from "lucide-react";
 import avatar_image from "../assets/avatar.png";
 import Modal from "../components/Modal";
 import { useChatStore } from "../store/useChatStore";
-import { Info,TriangleAlert } from "lucide-react";
+import { Info,TriangleAlert,KeyRound } from "lucide-react";
 import { LoaderCircle } from "lucide-react";
+import KeyDisplay from "../components/KeyDisplay.jsx";
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile,isDeleting } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
   const {toggleModal,setModalFlag} = useChatStore();
+  const keyName=authUser.email.split('@')[0];
+  const privateKey=sessionStorage.getItem(keyName);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -83,7 +86,7 @@ const ProfilePage = () => {
             <div className="space-y-1.5">
               <div className="text-sm text-zinc-400 flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Full Name
+                Full name
               </div>
               <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.fullName}</p>
             </div>
@@ -91,7 +94,7 @@ const ProfilePage = () => {
             <div className="space-y-1.5">
               <div className="text-sm text-zinc-400 flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                Email Address
+                Email address
               </div>
               <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email}</p>
             </div>
@@ -101,22 +104,29 @@ const ProfilePage = () => {
             <h2 className="text-md font-medium  mb-4 flex gap-2 items-center"><Info className="w-[1.1rem] h-[1.1rem]"/>Account information</h2>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-zinc-700">
-                <span>Member Since</span>
+                <span>Member since</span>
                 <span>{authUser.createdAt?.split("T")[0]}</span>
               </div>
               <div className="flex items-center justify-between py-2">
-                <span>Account Status</span>
+                <span>Account status</span>
                 <span className="text-green-500">Active</span>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-6 bg-base-300 rounded-xl p-6">
+            <h2 className="text-md font-medium  mb-4 flex gap-2 items-center"><KeyRound className="w-[1.1rem] h-[1.1rem]"/>Private Access Key</h2>
+            <div>
+                <KeyDisplay privateKey={privateKey}/>
             </div>
           </div>
         </div>
         <div className="bg-base-300 rounded-xl px-12 py-10 mt-8">
             <h2 className="text-md font-medium  mb-1 flex gap-2 items-center"><TriangleAlert className="w-[1.1rem] h-[1.1rem]"/>Delete your account</h2>
             <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between py-2">
-                <span>This will result in the permanent removal of your account and all associated data.</span>
-                <button className="bg-red-600 text-white px-6 text-md py-2 rounded-md hover:bg-red-700 transition-all ease-in-out duration-300" onClick={()=>{
+              <div className="flex flex-col sm:flex-row items-center justify-between py-2 gap-6">
+                <span className="text-justify">This will result in the permanent removal of your account and all associated data.</span>
+                <button className="bg-red-600 text-white px-10 sm:px-6 text-md py-2 rounded-md hover:bg-red-700 transition-all ease-in-out duration-300" onClick={()=>{
                   toggleModal();
                   setModalFlag(0);
                 }}>Delete</button>

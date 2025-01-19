@@ -4,10 +4,12 @@ import dayjs from "dayjs";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 import {groupMessagesByDate,updateGroupedMessages,maintainOrder} from "../lib/utils";
+import { encryptMessage,decryptMessage } from "../keys/encryption";
 
 export const useChatStore = create((set, get) => ({
   groupedMessages: {}, // Primary state for grouped messages
   users: [],
+  searchedUsers:[],
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
@@ -16,9 +18,15 @@ export const useChatStore = create((set, get) => ({
   hasMore:false,
   encryptFlag:true,
   modalFlag:1,
+  searchBar:false,
+  searchLoading:false,
+  isEmpty:false,
 
   toggleModal: () =>
     set((state) => ({ isOpen: !state.isOpen })),
+
+  toggleSearchBar: () =>
+    set((state) => ({ searchBar: !state.searchBar })),
   
   updateEncryptFlag: (qC) => 
     set((state) => ({
@@ -28,6 +36,8 @@ export const useChatStore = create((set, get) => ({
   setModalFlag: (flag) =>{set({modalFlag:flag})},
 
   defaultEncryptFlag: () => set({ encryptFlag: true }),
+
+  defaultIsEmpty: () => set({ isEmpty: false }),
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -41,6 +51,35 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  fetchSuggestedUsers: async (query) => {
+    set({ searchLoading: true });
+    try {
+      const res = await axiosInstance.get(`/messages/search-users?q=${query}`);
+      set({ searchedUsers: res.data });
+      if(res.data.length===0){
+        set({isEmpty:true});
+      }
+    } catch (error) {
+      console.error("Error fetching suggestions:", error.response?.data || error.message);
+      toast.error(error.response?.data?.error || "Failed to fetch user suggestions !");
+    }finally{
+      set({ searchLoading: false });
+    }
+  },
+
+  addFriend: async (friendId) => {
+    try {
+      await axiosInstance.post(`/messages/add-friend`,{friendId});
+      toast.success("Friend added successfully !");
+    } catch (error) {
+      console.error("Error adding friend:", error.response?.data || error.message);
+      toast.error(error.response?.data?.error || "Failed to send friend request !");
+    }
+  },
+  
+
+  clearSuggestions: () => set({ searchedUsers: [] }), // Clear suggestions
+
   getMessages: async (userId) => {
     const { cursor, groupedMessages,selectedUser,updateEncryptFlag } = get();
   
@@ -50,15 +89,17 @@ export const useChatStore = create((set, get) => ({
         limit: 4,
         ...(cursor && { lastMessageTimestamp: cursor }),
       };
-
-      const headers = {
-        publicKey: `${selectedUser.publicKey}`,
-      };
+      const email = useAuthStore.getState().authUser?.email;
+      const keyName=email.split('@')[0];
+      const privateKey=sessionStorage.getItem(keyName);
   
-      const res = await axiosInstance.get(`/messages/${userId}`, { params,headers });
+      const res = await axiosInstance.get(`/messages/${userId}`, { params });
       const { messages, hasMore } = res.data;
+      const publicKey = selectedUser.publicKey;
+
+      const updatedMessages = await decryptMessage(messages,privateKey,publicKey);
   
-      const newGroupedMessages = groupMessagesByDate(messages,updateEncryptFlag);
+      const newGroupedMessages = groupMessagesByDate(updatedMessages,updateEncryptFlag);
   
       // Merge newGroupedMessages with the existing groupedMessages
       let updatedGroupedMessages = { ...groupedMessages };
@@ -88,6 +129,7 @@ export const useChatStore = create((set, get) => ({
         hasMore,
       });
     } catch (error) {
+      console.log(error);
       toast.error(error.response?.data?.message || "Failed to fetch messages");
     } finally {
       set({ isMessagesLoading: false });
@@ -95,26 +137,36 @@ export const useChatStore = create((set, get) => ({
   },
   
   sendMessage: async (messageData) => {
+    console.log(messageData);
     const { selectedUser, groupedMessages,updateEncryptFlag } = get();
+    const email = useAuthStore.getState().authUser?.email;
+    const keyName=email.split('@')[0];
+    const privateKey=sessionStorage.getItem(keyName);
     if (!selectedUser) {
       toast.error("No user selected");
       return;
     }
     try {
-      const updatedMessageData = {
-        ...messageData,
-        publicKey: selectedUser.publicKey, 
-      };
-  
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, updatedMessageData);
-
+      const publicKey = selectedUser.publicKey;
+      const data = messageData.text && messageData.text;
+      if (messageData.image) {
+        // Don't encrypt if there is an image
+        messageData.text = data;  // Ensure the text remains unmodified
+      } else {
+        // Encrypt message if it's text-based
+        const updatedMessageData = await encryptMessage(data, privateKey, publicKey);
+        messageData.text = updatedMessageData.encryptedMessage;
+      }
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       const newMessage =res.data;
+      newMessage.text = newMessage.text?data:null;
+      newMessage.qC = true;
   
       // Add new message to the groupedMessages directly
       let updatedGroupedMessages = updateGroupedMessages(groupedMessages, newMessage,updateEncryptFlag);
       set({ groupedMessages: updatedGroupedMessages });
     } catch (error) {
-      console.log(error);
+      console.error("Failed to send message:", error);
       toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
@@ -124,12 +176,20 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
   
     const socket = useAuthStore.getState().socket;
+    const email = useAuthStore.getState().authUser?.email;
+    const keyName=email.split('@')[0];
+    const privateKey=sessionStorage.getItem(keyName);
+    const publicKey = selectedUser.publicKey;
 
     socket.off("newMessage");
   
-    socket.on("newMessage", (newMessage) => {
+    socket.on("newMessage", async (newMessage) => {
       const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
+
+      newMessage.qC = true;
+      const payLoad=[newMessage];
+      const updatedMessage=await decryptMessage(payLoad,privateKey,publicKey);
   
       const currentGroupedMessages = get().groupedMessages;
   
@@ -140,13 +200,15 @@ export const useChatStore = create((set, get) => ({
       let updatedGroupedMessages = {
         ...currentGroupedMessages,
       };
+
+      
       
       // Add the new message for the given messageDate
       if (!updatedGroupedMessages[messageDate]) {
         // If the date doesn't exist, create a new group and perform sorting
         updatedGroupedMessages = {
           ...updatedGroupedMessages,
-          [messageDate]: [...(updatedGroupedMessages[messageDate] || []), newMessage],
+          [messageDate]: [...(updatedGroupedMessages[messageDate] || []), updatedMessage[0]],
         };
       
         updatedGroupedMessages = maintainOrder(updatedGroupedMessages);
@@ -155,7 +217,7 @@ export const useChatStore = create((set, get) => ({
         // If the date already exists, just append the new message to the existing date group
         updatedGroupedMessages[messageDate] = [
           ...(updatedGroupedMessages[messageDate] || []),
-          newMessage,
+          updatedMessage[0],
         ];
       }
   

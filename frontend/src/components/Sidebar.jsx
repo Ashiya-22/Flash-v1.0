@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState,useMemo } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
@@ -6,16 +6,21 @@ import { Users } from "lucide-react";
 import avatar_image from "../assets/avatar.png";
 import { X } from "lucide-react";
 
-const Sidebar = () => {
+const Sidebar = ({keyDownloaded}) => {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading,defaultEncryptFlag } = useChatStore();
 
   const { onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+ 
+  const commonCount = useMemo(() => {
+    const onlineSet = new Set(onlineUsers);
+    return users.filter((user) => onlineSet.has(user._id)).length;
+  }, [onlineUsers, users]); // Dependencies
 
   useEffect(() => {
     getUsers();
   }, [getUsers]);
-
+  
   const filteredUsers = showOnlineOnly
     ? users.filter((user) => onlineUsers.includes(user._id))
     : users;
@@ -23,7 +28,8 @@ const Sidebar = () => {
   if (isUsersLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
+    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200 relative">
+      {!keyDownloaded && <div className="w-full h-full absolute top-0 left-0 bg-base-100 z-30 opacity-50"></div>}
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
@@ -40,7 +46,7 @@ const Sidebar = () => {
             />
             <span className="text-sm">Filter</span>
           </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
+          <span className="text-xs text-zinc-500">({commonCount} online)</span>
         </div>
       </div>
 
@@ -85,8 +91,12 @@ const Sidebar = () => {
           </button>
         ))}
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No online users</div>
+        {filteredUsers.length === 0 && showOnlineOnly && (
+          <div className="text-center text-zinc-500 py-4 animate-fadeIn">No online users</div>
+        )}
+
+        {users.length === 0 && !showOnlineOnly &&(
+          <div className="text-center text-zinc-500 py-4 animate-pulse">Let's start making friends :&#41;</div>
         )}
       </div>
     </aside>
