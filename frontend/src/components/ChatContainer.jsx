@@ -45,7 +45,7 @@ const ChatContainer = () => {
     ) {
       // Fetch more messages when scrolled to the top
       setIsAtTop(true);
-      setProgress(progress + 40);
+      setProgress(progress + 80);
       await getMessages(selectedUser._id);
       setProgress(100);
       scrollContainerRef.current.scrollTop = 1;
