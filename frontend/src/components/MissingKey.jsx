@@ -14,7 +14,7 @@ const MissingKey = ({setIsKeyPresent}) => {
                 <div className="w-[35rem] h-[26rem] bg-base-300 rounded-md mx-5 flex flex-col gap-y-4 items-center justify-around px-4 py-6">
                     <div className="text-lg lg:text-xl font-semibold flex gap-x-2 items-center justify-center animate-pulse">Missing Private Access Key (PAK)</div>
                     <div className="flex flex-col gap-y-1 items-center justify-center">
-                        <img src={authUser.profilePic || avatar_image} className="w-[3.8rem] h-[3.8rem]rounded-full"/>
+                        <img src={authUser.profilePic || avatar_image} className="w-[3.8rem] h-[3.8rem] rounded-full"/>
                         <div className="text-bold text-md">{authUser.fullName}</div>
                     </div>
                     <div className="relative mt-1">
