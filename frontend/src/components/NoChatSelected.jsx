@@ -46,7 +46,7 @@ const NoChatSelected = ({keyDownloaded,value,setKeyDownloaded}) => {
                 Downloading PAK<Loader2 className="h-5 w-5 animate-spin" />
                 </>
               ) : (
-                <>Download PAK<Download className='w-[1.2rem]'/></>
+                <>Download PAK<Download className='w-5 h-5'/></>
               )}</button>
           </div>
           </div>
